@@ -17,8 +17,8 @@ export default function HomeScreen() {
         >
           PLAY TO WRITE
         </button>
-        {/* 광고 구함 타일 제거하고, 영상 삽입 */}
-        <div className="w-full h-48 overflow-hidden rounded-xl border border-gray-600">
+        {/* 영상 타일: 1:1 비율 유지 */}
+        <div className="w-full aspect-square overflow-hidden rounded-xl border border-gray-600">
           <video
             src="/video/rudilick_home_video.mp4"
             autoPlay
