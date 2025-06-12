@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode'; // ✅ 수정: named import 사용
 
 const UserContext = createContext();
 
@@ -11,7 +11,7 @@ export const UserProvider = ({ children }) => {
     const token = localStorage.getItem('google_id_token');
     if (token) {
       try {
-        const decoded = jwt_decode(token);
+        const decoded = jwtDecode(token);
         setUser({
           email: decoded.email,
           name: decoded.name,
@@ -26,7 +26,7 @@ export const UserProvider = ({ children }) => {
 
   const login = (token) => {
     localStorage.setItem('google_id_token', token);
-    const decoded = jwt_decode(token);
+    const decoded = jwtDecode(token);
     setUser({
       email: decoded.email,
       name: decoded.name,
