@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import StatsSection from '../components/StatsSection'; // ✅ 추가된 import
+import StatsSection from '../components/StatsSection';
+import GoogleLoginButton from '../components/GoogleLoginButton'; // ✅ 추가
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -8,6 +9,12 @@ export default function HomeScreen() {
     <div className="min-h-screen flex flex-col items-center justify-start px-4 py-8 bg-gray-900 text-white">
       {/* ❌ 상단 header 제거됨 */}
       <main className="w-full max-w-md text-center">
+
+        {/* ✅ 로그인 상태 표시 (우상단 작게) */}
+        <div className="w-full text-right mb-2">
+          <GoogleLoginButton />
+        </div>
+
         <h2 className="text-xl font-semibold mb-2">Make. Play. Share.</h2>
         <p className="text-gray-400 mb-6">
           Create your own drum licks and share them with the world.
@@ -18,6 +25,7 @@ export default function HomeScreen() {
         >
           PLAY TO WRITE
         </button>
+
         {/* 영상 타일: 1:1 비율 유지 */}
         <div className="w-full aspect-square overflow-hidden rounded-xl border border-gray-600">
           <video
