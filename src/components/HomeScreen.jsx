@@ -10,10 +10,10 @@ export default function HomeScreen() {
       {/* ❌ 상단 header 제거됨 */}
       <main className="w-full max-w-md text-center">
 
-        {/* ✅ 로그인 상태 표시 (우상단 작게) */}
-        <div className="w-full text-right mb-2">
-          <GoogleLoginButton />
-        </div>
+        {/* ✅ 제거: 우상단 로그인 상태 표시 */}
+        {/* <div className="w-full text-right mb-2"> */}
+        {/*   <GoogleLoginButton /> */}
+        {/* </div> */}
 
         <h2 className="text-xl font-semibold mb-2">Make. Play. Share.</h2>
         <p className="text-gray-400 mb-6">
@@ -27,7 +27,7 @@ export default function HomeScreen() {
         </button>
 
         {/* 영상 타일: 1:1 비율 유지 */}
-        <div className="w-full aspect-square overflow-hidden rounded-xl border border-gray-600">
+        <div className="w-full aspect-square overflow-hidden rounded-xl border border-gray-600 relative">
           <video
             src="/video/rudilick_home_video.mp4"
             autoPlay
@@ -36,6 +36,11 @@ export default function HomeScreen() {
             playsInline
             className="w-full h-full object-cover"
           />
+
+          {/* ✅ 로그인 버튼: 영상 내부 하단 중앙에 겹치게 */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10">
+            <GoogleLoginButton />
+          </div>
         </div>
 
         {/* ✅ 영상 아래 통계 영역 */}
