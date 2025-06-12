@@ -25,7 +25,7 @@ export default function GoogleLoginButton() {
         ) : (
           <button
             onClick={googleLogin}
-            className="flex items-center gap-2 bg-black/20 text-white text-sm font-medium px-4 py-2 rounded-full shadow-md"
+            className="flex items-center gap-2 bg-black/50 text-white text-sm font-medium px-4 py-2 rounded-full shadow-md"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
