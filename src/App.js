@@ -12,8 +12,10 @@ import HomeScreen from "./components/HomeScreen";
 import WriteFormSection from "./components/WriteFormSection";
 import LibrarySection from "./components/LibrarySection";
 import AccountSection from "./components/AccountSection_shared_tracking";
+import { UserProvider } from "./contexts/UserContext"; // ✅ 로그인 상태 전역 관리
+import { GoogleOAuthProvider } from "@react-oauth/google"; // ✅ 구글 OAuth 추가
 
-import { UserProvider } from "./contexts/UserContext"; // ✅ 추가
+const CLIENT_ID = "170520257716-ftoecfa6d0pd19453hc41fooaanrh9nd.apps.googleusercontent.com";
 
 const isKorean = navigator.language.startsWith("ko");
 const text = {
@@ -36,25 +38,27 @@ const text = {
 function App() {
   console.log("Force update at " + new Date()); // ✅ Git이 감지할 강제 변경
   return (
-    <UserProvider> {/* ✅ 로그인 상태 전역 관리 시작 */}
-      <Router>
-        <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
-          <h1 className="text-center text-sm text-gray-500">
-            🎯 이건 변경 감지를 위한 테스트 메시지입니다.
-          </h1>
-          <Header />
-          <div className="flex-grow overflow-auto pt-[72px] pb-[72px] px-4">
-            <Routes>
-              <Route path="/" element={<HomeScreen />} />
-              <Route path="/write" element={<WriteFormSection />} />
-              <Route path="/library" element={<LibrarySection />} />
-              <Route path="/mypage" element={<AccountSection />} />
-            </Routes>
+    <GoogleOAuthProvider clientId={CLIENT_ID}> {/* ✅ 구글 인증 Provider로 전체 감쌈 */}
+      <UserProvider> {/* ✅ 로그인 상태 전역 관리 */}
+        <Router>
+          <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
+            <h1 className="text-center text-sm text-gray-500">
+              🎯 이건 변경 감지를 위한 테스트 메시지입니다.
+            </h1>
+            <Header />
+            <div className="flex-grow overflow-auto pt-[72px] pb-[72px] px-4">
+              <Routes>
+                <Route path="/" element={<HomeScreen />} />
+                <Route path="/write" element={<WriteFormSection />} />
+                <Route path="/library" element={<LibrarySection />} />
+                <Route path="/mypage" element={<AccountSection />} />
+              </Routes>
+            </div>
+            <TabBar />
           </div>
-          <TabBar />
-        </div>
-      </Router>
-    </UserProvider>
+        </Router>
+      </UserProvider>
+    </GoogleOAuthProvider>
   );
 }
 
@@ -80,24 +84,15 @@ function TabBar() {
         <Home size={20} />
         <span className="text-xs mt-1">{text.home}</span>
       </Link>
-      <Link
-        to="/write"
-        className={`flex flex-col items-center ${active("/write")}`}
-      >
+      <Link to="/write" className={`flex flex-col items-center ${active("/write")}`}>
         <PenLine size={20} />
         <span className="text-xs mt-1">{text.write}</span>
       </Link>
-      <Link
-        to="/library"
-        className={`flex flex-col items-center ${active("/library")}`}
-      >
+      <Link to="/library" className={`flex flex-col items-center ${active("/library")}`}>
         <BookOpen size={20} />
         <span className="text-xs mt-1">{text.library}</span>
       </Link>
-      <Link
-        to="/mypage"
-        className={`flex flex-col items-center ${active("/mypage")}`}
-      >
+      <Link to="/mypage" className={`flex flex-col items-center ${active("/mypage")}`}>
         <User size={20} />
         <span className="text-xs mt-1">{text.mypage}</span>
       </Link>
