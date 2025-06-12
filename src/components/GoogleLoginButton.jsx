@@ -13,7 +13,7 @@ export default function GoogleLoginButton() {
         {user ? (
           <div className="text-xs text-gray-400">✅ {user.email}</div>
         ) : (
-          <div className="bg-black/50 px-3 py-2 rounded-full backdrop-blur-sm">
+          <div className="bg-black/70 px-3 py-2 rounded-full backdrop-blur-sm">
             <GoogleLogin
               onSuccess={(credentialResponse) => {
                 const token = credentialResponse.credential;
