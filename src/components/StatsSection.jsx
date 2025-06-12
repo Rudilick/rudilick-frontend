@@ -17,9 +17,9 @@ export default function StatsSection() {
   };
 
   return (
-    <section className="bg-black text-white py-12 px-6"> {/* ✅ 더 짙은 배경 + 좌우 여백 */}
+    <section className="bg-gray-900 text-white py-12 px-6"> {/* ✅ 주변과 일치하는 배경색 */}
       <div className="max-w-5xl mx-auto text-center">
-        <h2 className="text-2xl font-bold mb-10">RudiLick in Numbers</h2>
+        {/* ❌ 제목 삭제됨 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
           <div>
             <p className="text-4xl font-extrabold">
