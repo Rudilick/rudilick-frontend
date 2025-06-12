@@ -13,6 +13,8 @@ import WriteFormSection from "./components/WriteFormSection";
 import LibrarySection from "./components/LibrarySection";
 import AccountSection from "./components/AccountSection_shared_tracking";
 
+import { UserProvider } from "./contexts/UserContext"; // ✅ 추가
+
 const isKorean = navigator.language.startsWith("ko");
 const text = {
   home: isKorean ? "홈" : "Home",
@@ -32,26 +34,27 @@ const text = {
 };
 
 function App() {
-  console.log("Force update at " + new Date());  // ✅ Git이 감지할 강제 변경
-
+  console.log("Force update at " + new Date()); // ✅ Git이 감지할 강제 변경
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
-        <h1 className="text-center text-sm text-gray-500">
-          🎯 이건 변경 감지를 위한 테스트 메시지입니다.
-        </h1>
-        <Header />
-        <div className="flex-grow overflow-auto pt-[72px] pb-[72px] px-4">
-          <Routes>
-            <Route path="/" element={<HomeScreen />} />
-            <Route path="/write" element={<WriteFormSection />} />
-            <Route path="/library" element={<LibrarySection />} />
-            <Route path="/mypage" element={<AccountSection />} />
-          </Routes>
+    <UserProvider> {/* ✅ 로그인 상태 전역 관리 시작 */}
+      <Router>
+        <div className="flex flex-col min-h-screen bg-gray-900 text-white font-sans">
+          <h1 className="text-center text-sm text-gray-500">
+            🎯 이건 변경 감지를 위한 테스트 메시지입니다.
+          </h1>
+          <Header />
+          <div className="flex-grow overflow-auto pt-[72px] pb-[72px] px-4">
+            <Routes>
+              <Route path="/" element={<HomeScreen />} />
+              <Route path="/write" element={<WriteFormSection />} />
+              <Route path="/library" element={<LibrarySection />} />
+              <Route path="/mypage" element={<AccountSection />} />
+            </Routes>
+          </div>
+          <TabBar />
         </div>
-        <TabBar />
-      </div>
-    </Router>
+      </Router>
+    </UserProvider>
   );
 }
 
