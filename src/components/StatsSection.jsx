@@ -17,11 +17,10 @@ export default function StatsSection() {
   };
 
   return (
-    <section className="bg-gray-900 text-white py-12 px-6"> {/* ✅ 주변과 일치하는 배경색 */}
+    <section className="bg-gray-900 text-white py-12 px-6">
       <div className="max-w-5xl mx-auto text-center">
-        {/* ❌ 제목 삭제됨 */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
-          <div>
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-8 sm:gap-16">
+          <div className="flex flex-col items-center">
             <p className="text-4xl font-extrabold">
               <CountUp
                 end={stats.visits}
@@ -29,9 +28,9 @@ export default function StatsSection() {
                 formattingFn={formatNumber}
               />
             </p>
-            <p className="text-gray-400 mt-2">Total Visits</p>
+            <p className="text-gray-400 mt-2 text-sm">Total Visits</p>
           </div>
-          <div>
+          <div className="flex flex-col items-center">
             <p className="text-4xl font-extrabold">
               <CountUp
                 end={stats.users}
@@ -39,9 +38,9 @@ export default function StatsSection() {
                 formattingFn={formatNumber}
               />
             </p>
-            <p className="text-gray-400 mt-2">Registered Users</p>
+            <p className="text-gray-400 mt-2 text-sm">Registered Users</p>
           </div>
-          <div>
+          <div className="flex flex-col items-center">
             <p className="text-4xl font-extrabold">
               <CountUp
                 end={stats.licks}
@@ -49,7 +48,7 @@ export default function StatsSection() {
                 formattingFn={formatNumber}
               />
             </p>
-            <p className="text-gray-400 mt-2">Uploaded Licks</p>
+            <p className="text-gray-400 mt-2 text-sm">Uploaded Licks</p>
           </div>
         </div>
       </div>
