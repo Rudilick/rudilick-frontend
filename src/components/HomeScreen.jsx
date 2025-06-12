@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import StatsSection from '../components/StatsSection'; // ✅ 추가된 import
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ export default function HomeScreen() {
             className="w-full h-full object-cover"
           />
         </div>
+
+        {/* ✅ 영상 아래 통계 영역 */}
+        <StatsSection />
       </main>
     </div>
   );

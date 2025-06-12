@@ -1,4 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
 const AudioRecorderTile = forwardRef((props, ref) => {
   const mediaRecorderRef = useRef(null);
   const settingsRef = useRef(null);
@@ -8,11 +9,13 @@ const AudioRecorderTile = forwardRef((props, ref) => {
   const [readyText, setReadyText] = useState(null);
   const recordedChunks = useRef([]);
   const timeoutRef = useRef(null);
+
   useImperativeHandle(ref, () => ({
     startRecording,
     stopRecording,
     cancelRecording,
   }));
+
   const playBufferedSound = async (context, url, scheduledTime) => {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
@@ -26,6 +29,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       source.onended = resolve;
     });
   };
+
   const playCountAndClick = async () => {
     const bpm = settingsRef.current.slowMode ? 50 : settingsRef.current.bpm;
     const meter = settingsRef.current.meter;
@@ -40,6 +44,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     }, 1000);
     setTimeout(() => setReadyText(null), 3000);
     const now = context.currentTime + 2.5 + interval;
+
     for (let i = 0; i < beatsPerMeasure; i++) {
       const name = countNames[i];
       const scheduledTime = now + i * interval;
@@ -51,19 +56,22 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       }, (scheduledTime - context.currentTime) * 1000);
       playBufferedSound(context, `/audio/${name}.wav`, scheduledTime);
     }
-    // ✅ [수정된 부분] 클릭음 시작 시점을 0.05초 늦춤
+
     const countEndTime = now + beatsPerMeasure * interval + 0.05;
     const totalBeats = Math.floor(60 / interval);
+
     for (let i = 0; i < totalBeats; i++) {
       const scheduledTime = countEndTime + i * interval;
       const isFirstBeat = i % beatsPerMeasure === 0;
       const clickUrl = isFirstBeat ? '/audio/click_high.wav' : '/audio/click.wav';
       playBufferedSound(context, clickUrl, scheduledTime);
     }
+
     await new Promise((res) =>
       setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000)
     );
   };
+
   const startRecording = async (settings) => {
     if (recording) return;
     try {
@@ -79,10 +87,10 @@ const AudioRecorderTile = forwardRef((props, ref) => {
         const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
         console.log("🔴 Recorded data:", blob);
 
-        // ✅ 추가: 업로드 → 전사 요청 → JSON 출력
         try {
           const formData = new FormData();
           formData.append("file", blob, "recording.wav");
+
           const uploadRes = await fetch("https://rudilick-backend.onrender.com/upload-wav/", {
             method: "POST",
             body: formData,
@@ -93,7 +101,12 @@ const AudioRecorderTile = forwardRef((props, ref) => {
           const transcribeRes = await fetch("https://rudilick-backend.onrender.com/transcribe-beat/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filename: uploadJson.filename }),
+            body: JSON.stringify({
+              filename: uploadJson.filename,
+              bpm: settingsRef.current.bpm,
+              meter: settingsRef.current.meter,
+              slowMode: settingsRef.current.slowMode,
+            }),
           });
           const jsonResult = await transcribeRes.json();
           console.log("🎵 전사 결과:", jsonResult);
@@ -101,6 +114,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
           console.error("⚠️ 전사 처리 중 오류:", error);
         }
       };
+
       mediaRecorderRef.current.start();
       setRecording(true);
       await playCountAndClick();
@@ -108,9 +122,10 @@ const AudioRecorderTile = forwardRef((props, ref) => {
         stopRecording();
       }, 60000);
     } catch (err) {
-      alert("❌ 마이크 가접 실패: " + err.message);
+      alert("❌ 마이크 접근 실패: " + err.message);
     }
   };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
@@ -122,6 +137,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       clickSourcesRef.current = [];
     }
   };
+
   const cancelRecording = () => {
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
@@ -133,6 +149,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       clickSourcesRef.current = [];
     }
   };
+
   return (
     <div className="p-4 bg-gray-800 rounded-xl shadow-lg text-white mt-4 text-center h-28 flex items-center justify-center">
       {readyText && (
@@ -147,4 +164,5 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     </div>
   );
 });
+
 export default AudioRecorderTile;
