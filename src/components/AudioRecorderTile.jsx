@@ -59,7 +59,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
 
     const countEndTime = now + beatsPerMeasure * interval + 0.05;
     const totalBeats = Math.floor(60 / interval);
-
     for (let i = 0; i < totalBeats; i++) {
       const scheduledTime = countEndTime + i * interval;
       const isFirstBeat = i % beatsPerMeasure === 0;
@@ -67,9 +66,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       playBufferedSound(context, clickUrl, scheduledTime);
     }
 
-    await new Promise((res) =>
-      setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000)
-    );
+    await new Promise((res) => setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000));
   };
 
   const startRecording = async (settings) => {
@@ -80,17 +77,17 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       recordedChunks.current = [];
+
       mediaRecorderRef.current.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunks.current.push(e.data);
       };
+
       mediaRecorderRef.current.onstop = async () => {
         const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
         console.log("🔴 Recorded data:", blob);
-
         try {
           const formData = new FormData();
           formData.append("file", blob, "recording.wav");
-
           const uploadRes = await fetch("https://rudilick-backend.onrender.com/upload-wav/", {
             method: "POST",
             body: formData,
@@ -108,6 +105,14 @@ const AudioRecorderTile = forwardRef((props, ref) => {
               slowMode: settingsRef.current.slowMode,
             }),
           });
+
+          if (!transcribeRes.ok) {
+            const errorText = await transcribeRes.text();
+            console.error("❌ 응답 상태 오류:", transcribeRes.status);
+            console.error("❌ 응답 본문:", errorText);
+            return;
+          }
+
           const jsonResult = await transcribeRes.json();
           console.log("🎵 전사 결과:", jsonResult);
         } catch (error) {
@@ -152,9 +157,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
 
   return (
     <div className="p-4 bg-gray-800 rounded-xl shadow-lg text-white mt-4 text-center h-28 flex items-center justify-center">
-      {readyText && (
-        <p className="text-4xl font-bold text-blue-400 animate-pulse">{readyText}</p>
-      )}
+      {readyText && <p className="text-4xl font-bold text-blue-400 animate-pulse">{readyText}</p>}
       {countNumber !== null && readyText === null && (
         <p className="text-4xl font-bold text-yellow-300 animate-pulse">{countNumber}</p>
       )}
