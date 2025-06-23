@@ -13,7 +13,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({
     startRecording,
     stopRecording,
-    cancelRecording,
+    cancelRecording
   }));
 
   const playBufferedSound = async (context, url, scheduledTime) => {
@@ -38,13 +38,14 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     const countNames = ['one', 'two', 'three', 'four', 'five', 'six', 'seven'];
     const hypeMessages = ["Let's groove!", "Let's go!", "Here we go!", "Time to hit!", "Drum on!"];
     const context = new (window.AudioContext || window.webkitAudioContext)();
+
     setReadyText("Are you ready?");
     setTimeout(() => {
       setReadyText(hypeMessages[Math.floor(Math.random() * hypeMessages.length)]);
     }, 1000);
     setTimeout(() => setReadyText(null), 3000);
-    const now = context.currentTime + 2.5 + interval;
 
+    const now = context.currentTime + 2.5 + interval;
     for (let i = 0; i < beatsPerMeasure; i++) {
       const name = countNames[i];
       const scheduledTime = now + i * interval;
@@ -74,6 +75,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     try {
       settingsRef.current = settings;
       await Promise.resolve();
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       recordedChunks.current = [];
@@ -88,9 +90,10 @@ const AudioRecorderTile = forwardRef((props, ref) => {
         try {
           const formData = new FormData();
           formData.append("file", blob, "recording.wav");
+
           const uploadRes = await fetch("https://rudilick-backend.onrender.com/upload-wav/", {
             method: "POST",
-            body: formData,
+            body: formData
           });
           const uploadJson = await uploadRes.json();
           console.log("📤 업로드 응답:", uploadJson);
@@ -102,8 +105,8 @@ const AudioRecorderTile = forwardRef((props, ref) => {
               filename: uploadJson.filename,
               bpm: settingsRef.current.bpm,
               meter: settingsRef.current.meter,
-              slowMode: settingsRef.current.slowMode,
-            }),
+              slowMode: settingsRef.current.slowMode
+            })
           });
 
           if (!transcribeRes.ok) {
