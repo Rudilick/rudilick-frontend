@@ -44,7 +44,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     }, 1000);
     setTimeout(() => setReadyText(null), 3000);
     const now = context.currentTime + 2.5 + interval;
-
     for (let i = 0; i < beatsPerMeasure; i++) {
       const name = countNames[i];
       const scheduledTime = now + i * interval;
@@ -56,17 +55,14 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       }, (scheduledTime - context.currentTime) * 1000);
       playBufferedSound(context, `/audio/${name}.wav`, scheduledTime);
     }
-
     const countEndTime = now + beatsPerMeasure * interval + 0.05;
     const totalBeats = Math.floor(60 / interval);
-
     for (let i = 0; i < totalBeats; i++) {
       const scheduledTime = countEndTime + i * interval;
       const isFirstBeat = i % beatsPerMeasure === 0;
       const clickUrl = isFirstBeat ? '/audio/click_high.wav' : '/audio/click.wav';
       playBufferedSound(context, clickUrl, scheduledTime);
     }
-
     await new Promise((res) => setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000));
   };
 
@@ -88,7 +84,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
         console.log("🔴 Recorded data:", blob);
         try {
           props.onTranscribeStart?.();
-
           const formData = new FormData();
           formData.append("file", blob, "recording.wav");
 
@@ -96,6 +91,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
             method: "POST",
             body: formData
           });
+
           const uploadJson = await uploadRes.json();
           console.log("📤 업로드 응답:", uploadJson);
 
@@ -112,6 +108,8 @@ const AudioRecorderTile = forwardRef((props, ref) => {
             })
           });
 
+          console.log("📡 전사 요청 보냄");
+
           if (!transcribeRes.ok) {
             const errorText = await transcribeRes.text();
             console.error("❌ 응답 상태 오류:", transcribeRes.status);
@@ -120,8 +118,15 @@ const AudioRecorderTile = forwardRef((props, ref) => {
             return;
           }
 
-          const jsonResult = await transcribeRes.json();
-          console.log("🎵 전사 결과:", jsonResult);
+          const rawText = await transcribeRes.text();
+          console.log("📦 응답 본문 텍스트:", rawText);
+
+          try {
+            const jsonResult = JSON.parse(rawText);
+            console.log("🎵 전사 결과(JSON):", jsonResult);
+          } catch (err) {
+            console.error("❌ JSON 파싱 실패:", err.message);
+          }
 
           props.onTranscribeEnd?.();
         } catch (error) {
@@ -133,6 +138,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       mediaRecorderRef.current.start();
       setRecording(true);
       await playCountAndClick();
+
       timeoutRef.current = setTimeout(() => {
         stopRecording();
       }, 60000);
