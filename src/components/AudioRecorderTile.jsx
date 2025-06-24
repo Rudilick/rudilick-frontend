@@ -13,7 +13,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({
     startRecording,
     stopRecording,
-    cancelRecording
+    cancelRecording,
   }));
 
   const playBufferedSound = async (context, url, scheduledTime) => {
@@ -46,7 +46,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     setTimeout(() => setReadyText(null), 3000);
 
     const now = context.currentTime + 2.5 + interval;
-
     for (let i = 0; i < beatsPerMeasure; i++) {
       const name = countNames[i];
       const scheduledTime = now + i * interval;
@@ -67,7 +66,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       const clickUrl = isFirstBeat ? '/audio/click_high.wav' : '/audio/click.wav';
       playBufferedSound(context, clickUrl, scheduledTime);
     }
-
     await new Promise((res) => setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000));
   };
 
@@ -79,89 +77,37 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       recordedChunks.current = [];
-
       mediaRecorderRef.current.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunks.current.push(e.data);
       };
-
       mediaRecorderRef.current.onstop = async () => {
         const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
         console.log("🔴 Recorded data:", blob);
-
         try {
           props.onTranscribeStart?.();
-
           const formData = new FormData();
           formData.append("file", blob, "recording.wav");
+          formData.append("bpm", settingsRef.current.bpm);
+          formData.append("meter", settingsRef.current.meter);
+          formData.append("slowMode", settingsRef.current.slowMode);
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-          const uploadRes = await fetch("https://rudilick-backend.onrender.com/upload-wav/", {
+          const response = await fetch("https://rudilick-backend.onrender.com/record-and-transcribe/", {
             method: "POST",
             body: formData,
-            signal: controller.signal,
           });
 
-          const text = await uploadRes.text();
-          clearTimeout(timeoutId);
-          console.log("📤 업로드 응답 텍스트:", text);
-
-          let uploadJson;
-          try {
-            uploadJson = JSON.parse(text);
-          } catch (err) {
-            console.error("❌ 업로드 응답 JSON 파싱 실패:", err.message);
-            props.onTranscribeEnd?.();
-            return;
-          }
-
-          console.log("📤 업로드 응답 파싱 결과:", uploadJson);
-
-          props.onTranscribeStatusUpdate?.("전사 요청 중...");
-
-          const transcribeRes = await fetch("https://rudilick-backend.onrender.com/transcribe-beat/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: uploadJson.filename,
-              bpm: settingsRef.current.bpm,
-              meter: settingsRef.current.meter,
-              slowMode: settingsRef.current.slowMode
-            })
-          });
-
-          console.log("📡 전사 요청 보냄");
-
-          if (!transcribeRes.ok) {
-            const errorText = await transcribeRes.text();
-            console.error("❌ 전사 응답 상태 오류:", transcribeRes.status);
-            console.error("❌ 전사 응답 본문:", errorText);
-            props.onTranscribeEnd?.();
-            return;
-          }
-
-          const rawText = await transcribeRes.text();
-          console.log("📦 전사 응답 본문 텍스트:", rawText);
-
-          try {
-            const jsonResult = JSON.parse(rawText);
-            console.log("🎵 전사 결과(JSON):", jsonResult);
-          } catch (err) {
-            console.error("❌ 전사 응답 JSON 파싱 실패:", err.message);
-          }
-
-          props.onTranscribeEnd?.();
+          if (!response.ok) throw new Error("서버 응답 실패");
+          const result = await response.json();
+          console.log("✅ 전사 완료:", result);
         } catch (error) {
           console.error("⚠️ 전사 처리 중 오류:", error);
-          props.onTranscribeEnd?.();
         }
+        props.onTranscribeEnd?.();
       };
 
       mediaRecorderRef.current.start();
       setRecording(true);
       await playCountAndClick();
-
       timeoutRef.current = setTimeout(() => {
         stopRecording();
       }, 60000);
