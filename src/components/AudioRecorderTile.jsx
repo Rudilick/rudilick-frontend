@@ -1,4 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 const AudioRecorderTile = forwardRef((props, ref) => {
@@ -87,17 +88,18 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       mediaRecorderRef.current.onstop = async () => {
         const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
         console.log("🔴 Recorded data:", blob);
+
         try {
           props.onTranscribeStart?.();
           props.onTranscribeStatusUpdate?.("음원 전송 중...");
+
           const formData = new FormData();
           formData.append("file", blob, "recording.webm");
           formData.append("bpm", settingsRef.current.bpm);
           formData.append("meter", settingsRef.current.meter);
           formData.append("slowMode", settingsRef.current.slowMode ? "true" : "false");
-          // ✅ 추가된 항목
-          formData.append("startsAtFirstBeat", "true");
-          formData.append("startOffsetSec", "2.5");
+          formData.append("startsAtFirstBeat", settingsRef.current.startsAtFirstBeat ? "true" : "false");
+          formData.append("startOffsetSec", settingsRef.current.startOffsetSec?.toString() || "0.0");
 
           const response = await fetch(`${API_BASE_URL}/record-and-transcribe/`, {
             method: "POST",
@@ -114,6 +116,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
           console.error("⚠️ 전사 처리 중 오류:", error);
           props.onTranscribeStatusUpdate?.("⚠️ 오류 발생");
         }
+
         props.onTranscribeEnd?.();
       };
 
@@ -123,6 +126,7 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       timeoutRef.current = setTimeout(() => {
         stopRecording();
       }, 60000);
+
     } catch (err) {
       alert("❌ 마이크 접근 실패: " + err.message);
     }
