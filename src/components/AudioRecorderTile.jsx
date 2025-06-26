@@ -1,6 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-
-const API_BASE_URL = "http://localhost:8000"; // ✅ 로컬 백엔드 주소
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const AudioRecorderTile = forwardRef((props, ref) => {
   const mediaRecorderRef = useRef(null);
@@ -86,17 +85,19 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        const blob = new Blob(recordedChunks.current, { type: 'audio/webm' }); // ✅ webm
+        const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
         console.log("🔴 Recorded data:", blob);
         try {
           props.onTranscribeStart?.();
           props.onTranscribeStatusUpdate?.("음원 전송 중...");
-
           const formData = new FormData();
-          formData.append("file", blob, "recording.webm"); // ✅ 수정됨
+          formData.append("file", blob, "recording.webm");
           formData.append("bpm", settingsRef.current.bpm);
           formData.append("meter", settingsRef.current.meter);
-          formData.append("slowMode", settingsRef.current.slowMode ? "true" : "false"); // ✅ 수정됨
+          formData.append("slowMode", settingsRef.current.slowMode ? "true" : "false");
+          // ✅ 추가된 항목
+          formData.append("startsAtFirstBeat", "true");
+          formData.append("startOffsetSec", "2.5");
 
           const response = await fetch(`${API_BASE_URL}/record-and-transcribe/`, {
             method: "POST",
@@ -104,7 +105,6 @@ const AudioRecorderTile = forwardRef((props, ref) => {
           });
 
           props.onTranscribeStatusUpdate?.("악보 생성 중...");
-
           if (!response.ok) throw new Error("서버 응답 실패");
 
           const result = await response.json();
@@ -120,11 +120,9 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       mediaRecorderRef.current.start();
       setRecording(true);
       await playCountAndClick();
-
       timeoutRef.current = setTimeout(() => {
         stopRecording();
       }, 60000);
-
     } catch (err) {
       alert("❌ 마이크 접근 실패: " + err.message);
     }
