@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -6,21 +6,26 @@ const AudioRecorderTile = forwardRef((props, ref) => {
   const mediaRecorderRef = useRef(null);
   const settingsRef = useRef(null);
   const clickSourcesRef = useRef([]);
-  const [recording, setRecording] = useState(false);
-  const [countNumber, setCountNumber] = useState(null);
-  const [readyText, setReadyText] = useState(null);
   const recordedChunks = useRef([]);
-  const timeoutRef = useRef(null);
+  const countTimersRef = useRef([]);
+  const autoStopRef = useRef(null);
 
-  useImperativeHandle(ref, () => ({
-    startRecording,
-    stopRecording,
-    cancelRecording,
-  }));
+  // 안전하게 타이머/클릭음을 모두 정리
+  const clearAllTimersAndClicks = () => {
+    countTimersRef.current.forEach(t => clearTimeout(t));
+    countTimersRef.current = [];
+    clickSourcesRef.current.forEach(src => {
+      try { src.stop(); } catch {}
+    });
+    clickSourcesRef.current = [];
+    clearTimeout(autoStopRef.current);
+    autoStopRef.current = null;
+  };
 
+  // 오디오 버퍼 재생(스케줄)
   const playBufferedSound = async (context, url, scheduledTime) => {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
+    const resp = await fetch(url);
+    const arrayBuffer = await resp.arrayBuffer();
     const audioBuffer = await context.decodeAudioData(arrayBuffer);
     const source = context.createBufferSource();
     source.buffer = audioBuffer;
@@ -32,56 +37,82 @@ const AudioRecorderTile = forwardRef((props, ref) => {
     });
   };
 
-  const playCountAndClick = async () => {
-    const bpm = settingsRef.current.slowMode ? 50 : settingsRef.current.bpm;
-    const meter = settingsRef.current.meter;
-    const interval = 60 / bpm;
+  // 카운트 + 메트로놈 + 메시지 스케줄링
+  const playCountAndClick = async (meter, bpm) => {
     const beatsPerMeasure = parseInt(meter.split('/')[0], 10);
+    const interval = 60 / bpm;
 
-    const countNames = ['one', 'two', 'three', 'four', 'five', 'six', 'seven'];
-    const hypeMessages = ["Let's groove!", "Let's go!", "Here we go!", "Time to hit!", "Drum on!"];
     const context = new (window.AudioContext || window.webkitAudioContext)();
 
-    setReadyText("Are you ready?");
-    setTimeout(() => {
-      setReadyText(hypeMessages[Math.floor(Math.random() * hypeMessages.length)]);
-    }, 1000);
-    setTimeout(() => setReadyText(null), 3000);
+    // 메시지 단계: Ready -> Hype -> (카운트) -> Now Recording
+    props.onUiMessage?.("Are you ready?");
+    countTimersRef.current.push(setTimeout(() => {
+      const list = ["Let's groove!", "Let's go!", "Here we go!", "Time to hit!", "Drum on!"];
+      props.onUiMessage?.(list[Math.floor(Math.random() * list.length)]);
+    }, 1000));
+    countTimersRef.current.push(setTimeout(() => {
+      // hype 텍스트 잠깐 보여주고 사라짐
+      props.onUiMessage?.("");
+    }, 3000));
 
+    // 카운트 시작 기준(약간의 준비시간 + 한 박 선행)
     const now = context.currentTime + 2.5 + interval;
 
+    // 숫자 카운트(메시지로 표시) + 보이스 음원
+    const countNames = ['one', 'two', 'three', 'four', 'five', 'six', 'seven'];
     for (let i = 0; i < beatsPerMeasure; i++) {
-      const name = countNames[i];
       const scheduledTime = now + i * interval;
 
-      setTimeout(() => {
-        setCountNumber(i + 1);
-        if (i === beatsPerMeasure - 1) {
-          setTimeout(() => setCountNumber(null), interval * 1000 * 0.8);
-        }
-      }, (scheduledTime - context.currentTime) * 1000);
+      // 숫자 표시 타이머
+      const showTimer = setTimeout(() => {
+        props.onUiMessage?.(`${i + 1}`);
+      }, Math.max(0, (scheduledTime - context.currentTime) * 1000));
+      countTimersRef.current.push(showTimer);
 
-      playBufferedSound(context, `/audio/${name}.wav`, scheduledTime);
+      // 보이스 카운트 재생
+      const vName = countNames[i] || 'one';
+      playBufferedSound(context, `/audio/${vName}.wav`, scheduledTime);
     }
 
+    // 카운트 끝나는 시점 + 약간의 여유
     const countEndTime = now + beatsPerMeasure * interval + 0.05;
+
+    // 클릭 시작 알림
+    const startClicksTimer = setTimeout(() => {
+      props.onUiMessage?.("Now Recording...");
+    }, Math.max(0, (countEndTime - context.currentTime) * 1000));
+    countTimersRef.current.push(startClicksTimer);
+
+    // 클릭(메트로놈) 60초 분량 정도 사전 스케줄
     const totalBeats = Math.floor(60 / interval);
     for (let i = 0; i < totalBeats; i++) {
       const scheduledTime = countEndTime + i * interval;
       const isFirstBeat = i % beatsPerMeasure === 0;
-      const clickUrl = isFirstBeat ? '/audio/click_high.wav' : '/audio/click.wav';
-      playBufferedSound(context, clickUrl, scheduledTime);
+      const url = isFirstBeat ? '/audio/click_high.wav' : '/audio/click.wav';
+      playBufferedSound(context, url, scheduledTime);
     }
 
-    await new Promise((res) => setTimeout(res, (beatsPerMeasure + totalBeats + 1) * interval * 1000));
+    // 카운트 1마디 만큼의 오프셋을 백엔드로 전달하기 위해 반환
+    const startOffsetSec = beatsPerMeasure * interval + 0.05;
+    return { startOffsetSec };
   };
 
-  const startRecording = async (settings) => {
-    if (recording) return;
+  // 퍼블릭 메서드
+  useImperativeHandle(ref, () => ({
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  }));
+
+  async function startRecording(settings) {
+    if (mediaRecorderRef.current) return;
+
     try {
       settingsRef.current = settings;
-      await Promise.resolve();
+      const bpm = settingsRef.current.bpm ?? 60;
+      const meter = settingsRef.current.meter ?? "4/4";
 
+      // 마이크 권한
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       recordedChunks.current = [];
@@ -91,19 +122,20 @@ const AudioRecorderTile = forwardRef((props, ref) => {
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
-
         try {
+          const blob = new Blob(recordedChunks.current, { type: 'audio/webm' });
           props.onTranscribeStart?.();
           props.onTranscribeStatusUpdate?.("음원 전송 중...");
 
+          const { startOffsetSec } = await scheduleInfoPromise;
+
           const formData = new FormData();
           formData.append("file", blob, "recording.webm");
-          formData.append("bpm", settingsRef.current.bpm);
-          formData.append("meter", settingsRef.current.meter);
-          formData.append("slowMode", settingsRef.current.slowMode ? "true" : "false");
-          formData.append("startsAtFirstBeat", settingsRef.current.startsAtFirstBeat ? "true" : "false");
-          formData.append("startOffsetSec", settingsRef.current.startOffsetSec?.toString() || "0.0");
+          formData.append("bpm", String(bpm));
+          formData.append("meter", meter);
+          formData.append("slowMode", "false");
+          formData.append("startsAtFirstBeat", "false");         // 오프셋 기준
+          formData.append("startOffsetSec", String(startOffsetSec));
 
           const response = await fetch(`${API_BASE_URL}/record-and-transcribe/`, {
             method: "POST",
@@ -112,67 +144,61 @@ const AudioRecorderTile = forwardRef((props, ref) => {
 
           props.onTranscribeStatusUpdate?.("악보 생성 중...");
           if (!response.ok) throw new Error("서버 응답 실패");
-          const result = await response.json();
-          console.log("✅ 전사 완료:", result);
+          await response.json();
+
           props.onTranscribeStatusUpdate?.("전사 완료");
-        } catch (error) {
-          console.error("⚠️ 전사 처리 중 오류:", error);
+        } catch (err) {
+          console.error("⚠️ 전사 처리 중 오류:", err);
           props.onTranscribeStatusUpdate?.("⚠️ 오류 발생");
+        } finally {
+          props.onTranscribeEnd?.();
+          props.onRecordingChange?.(false);
+          props.onUiMessage?.("완료! 다시 녹음하려면 PLAY TO WRITE.");
+          clearAllTimersAndClicks();
+          mediaRecorderRef.current = null;
         }
-        props.onTranscribeEnd?.();
       };
 
+      // 녹음 시작
       mediaRecorderRef.current.start();
-      setRecording(true);
-      await playCountAndClick();
+      props.onRecordingChange?.(true);
 
-      timeoutRef.current = setTimeout(() => {
-        stopRecording();
-      }, 60000);
+      // 카운트 + 클릭 스케줄 및 메시지
+      const scheduleInfoPromise = playCountAndClick(meter, bpm);
+
+      // 안전 자동 종료(60초)
+      autoStopRef.current = setTimeout(() => stopRecording(), 60_000);
     } catch (err) {
-      alert("❌ 마이크 접근 실패: " + err.message);
+      props.onUiMessage?.("❌ 마이크 접근 실패: " + (err?.message || String(err)));
+      props.onRecordingChange?.(false);
+      clearAllTimersAndClicks();
+      mediaRecorderRef.current = null;
     }
-  };
+  }
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) {
+  function stopRecording() {
+    if (!mediaRecorderRef.current) return;
+    try {
       mediaRecorderRef.current.stop();
-      setRecording(false);
-      setCountNumber(null);
-      setReadyText(null);
-      clearTimeout(timeoutRef.current);
-      clickSourcesRef.current.forEach((source) => source.stop());
-      clickSourcesRef.current = [];
-    }
-  };
+    } catch {}
+    props.onUiMessage?.("처리 중… (업로드/전사)");
+    clearAllTimersAndClicks();
+  }
 
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && recording) {
+  function cancelRecording() {
+    if (!mediaRecorderRef.current) return;
+    try {
       mediaRecorderRef.current.stop();
-      setRecording(false);
-      setCountNumber(null);
-      setReadyText(null);
-      clearTimeout(timeoutRef.current);
-      clickSourcesRef.current.forEach((source) => source.stop());
-      clickSourcesRef.current = [];
-    }
-  };
+    } catch {}
+    // 업로드를 아예 하지 않기 위해 버퍼 비우기
+    recordedChunks.current = [];
+    props.onRecordingChange?.(false);
+    props.onUiMessage?.("취소되었습니다.");
+    clearAllTimersAndClicks();
+    mediaRecorderRef.current = null;
+  }
 
-  // ✅ 화면에 아무것도 그리지 않기(엔진만 사용)
-  if (props.headless) return null;
-
-  // (UI를 보고 싶다면 아래 반환을 쓰면 됨)
-  return (
-    <div className="p-4 bg-gray-800 rounded-xl shadow-lg text-white mt-4 text-center h-28 flex items-center justify-center">
-      {readyText && <p className="text-4xl font-bold text-blue-400 animate-pulse">{readyText}</p>}
-      {countNumber !== null && readyText === null && (
-        <p className="text-4xl font-bold text-yellow-300 animate-pulse">{countNumber}</p>
-      )}
-      {recording && readyText === null && countNumber === null && (
-        <p className="text-4xl font-bold text-green-400 animate-pulse">Now Recording...</p>
-      )}
-    </div>
-  );
+  return null; // 화면 UI는 부모가 담당
 });
 
 export default AudioRecorderTile;
